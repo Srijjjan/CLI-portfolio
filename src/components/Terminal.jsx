@@ -80,6 +80,7 @@ const Terminal = () => {
   const [stage, setStage] = useState(0); // 0: Start, 1: Typing Intro, 2: Bio Step 1...
   const [history, setHistory] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [showLastProjectPopup, setShowLastProjectPopup] = useState(false);
   const bottomRef = useRef(null);
 
   // Initial boot sequence
@@ -112,7 +113,46 @@ const Terminal = () => {
   const buttonLabels = ["Next", "Ok", "Go on", "View Projects"];
 
   return (
-    <div className="w-full min-h-full font-mono text-sm md:text-base leading-relaxed p-4 md:p-10 pb-20">
+    <div className="w-full min-h-full font-mono text-sm md:text-base leading-relaxed p-4 md:p-10 pb-20 relative">
+      <AnimatePresence>
+        {showLastProjectPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowLastProjectPopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-black border border-neon-blue p-8 max-w-md w-full shadow-[0_0_30px_rgba(0,255,255,0.2)] relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowLastProjectPopup(false)}
+                className="absolute top-2 right-2 text-gray-500 hover:text-white"
+              >
+                [X]
+              </button>
+              <div className="text-neon-blue font-bold mb-4 text-xl glitch-text">
+                SYSTEM MESSAGE
+              </div>
+              <p className="text-gray-300 font-mono mb-6 leading-relaxed">
+                [there r more project but latest r not listed here]
+              </p>
+              <button
+                onClick={() => setShowLastProjectPopup(false)}
+                className="w-full border border-neon-blue text-neon-blue py-2 hover:bg-neon-blue hover:text-black transition-colors font-bold tracking-wider"
+              >
+                ACKNOWLEDGE
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Boot Sequence */}
       <div className="mb-8 text-terminal-text/80">
         <TypingText
@@ -183,7 +223,6 @@ const Terminal = () => {
       </div>
 
       {/* Projects (Revealed after all bio is done) */}
-      {/* Projects (Revealed after all bio is done) */}
       {stage > bioParagraphs.length && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -237,10 +276,16 @@ const Terminal = () => {
                     OPEN LINK
                   </a>
 
-                  {/* NEXT Button - Only show if it's the current project and not the last one */}
-                  {isCurrent && !isLast && (
+                  {/* NEXT Button - Show for all current projects including last */}
+                  {isCurrent && (
                     <button
-                      onClick={handleNext}
+                      onClick={() => {
+                        if (isLast) {
+                          setShowLastProjectPopup(true);
+                        } else {
+                          handleNext();
+                        }
+                      }}
                       className="bg-gray-300 hover:bg-white text-black font-bold px-4 py-1 text-sm flex items-center gap-2"
                     >
                       NEXT <span className="text-[10px]">&gt;</span>
@@ -251,7 +296,20 @@ const Terminal = () => {
             );
           })}
 
-          {/* Footer - Only show after last project */}
+          {/* Footer - Only show after last project AND user has 'seen' it (maybe keep it always after last project but obscured? or logic same as before) 
+             Wait, if we show popup on Next, we probably want the footer to be visible immediately when last project is shown? 
+             Original logic: stage > bioParagraphs.length + projects.length - 1 
+             This logic triggers when Last Project is 'Current'. 
+             If we want footer to appear AFTER we "click next" on the last project... well, "next" on last now opens popup.
+             So footer should probably be visible ALONG with the last project, or maybe after we close the popup?
+             The original code showed footer when `stage > bioParagraphs.length + projects.length - 1`
+             which means when the loop index reaches the last item (idx = projects.length - 1), 
+             projectStartStage = bioP.len + 1 + (proj.len - 1) = bioP.len + proj.len.
+             Current stage logic: If we are AT the last project, stage is bioP.len + proj.len.
+             So the condition `stage > bioP.len + proj.len - 1` is TRUE when we are at the last project.
+             So the Footer is ALREADY visible when we reach the last project. 
+             This is likely fine/intent.
+          */}
           {stage > bioParagraphs.length + projects.length - 1 && (
             <div className="pt-12 text-center text-gray-600 text-xs border-t border-dashed border-gray-800 mt-12">
               <p>END OF LINE_</p>
